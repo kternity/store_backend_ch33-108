@@ -1,8 +1,10 @@
 # flast is folder Flask is function
 
-from flask import Flask 
+from flask import Flask, request
 import json
 from mock_data import catalog
+from config import db
+
 
 app = Flask("server")
 
@@ -34,6 +36,17 @@ def version():
 def get_catalog():
    return json.dumps(catalog)
       
+
+#save product
+@app.post("/api/catalog")
+def save_product():
+   product = request.get_json()
+   db.products.insert_one(product)
+
+   product["_id"] = str(product["_id"]) #clean the objectId('asd') from the obj
+   
+   return json.dumps(product)
+
 
 
 @app.get("/api/catalog/<category>")
