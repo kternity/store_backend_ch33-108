@@ -5,7 +5,6 @@ import json
 from mock_data import catalog
 from config import db
 
-
 app = Flask("server")
 
 @app.get("/")
@@ -21,7 +20,6 @@ def about():
    return "About me: Kenneth Chung"
 
 #############  catalogue API ##########
-
 @app.get("/api/version")
 def version():
    version = {
@@ -31,11 +29,15 @@ def version():
    return json.dumps(version)
 
 
-
 @app.get("/api/catalog")
 def get_catalog():
-   return json.dumps(catalog)
-      
+   cursor = db.products.find({})
+   results = []
+   for prod in cursor:
+      prod["_id"] = str(prod["_id"]) #fix _id issue
+      results.append(prod)
+
+   return json.dumps(results)
 
 #save product
 @app.post("/api/catalog")
@@ -49,48 +51,37 @@ def save_product():
 
 
 
+
+#get all products that belong to a category
 @app.get("/api/catalog/<category>")
 def get_by_category(category):
-   result = []
-   for prod in catalog:
-      if prod ["category"].lower() == category.lower():
-         result.append(prod)
-
-   return json.dumps(result)
-
+   cursor = db.products.find({"category":category})
+   # create a list, travel the cursor, fix the id, add it to the list and return the list
+   results = []
+   for prod in cursor: 
+      prod["_id"] = str(prod["_id"])
+      results.append(prod)   
+   return json.dumps(results)
 
 
 #return all products whose title CONTAINS the title variable
 @app.get("/api/catalog/search/<title>")
 def search_by_title(title):
-   result =[]
-   for prod in catalog:
-      if title.lower() in prod["title"].lower():
-         result.append(prod)
+   cursor = db.products.find({"title": {"$regex": title, "$options": "i"}}) #title contains this text
+   results = []
+   for prod in cursor:
+      prod["_id"] = str(prod["_id"])
+      results.append(prod)
 
-   return json.dumps(result)
-
+   return json.dumps(results)
 
 
 # create a get endpoint that returns the number of products in the catalog
 @app.get("/api/product/count")
 def count_products():
-   count = len(catalog)
+   count = db.products.count_documents({})
    return json.dumps(count)
    #json.dumps(len(catalog))
-
-
-
-# create a get endpoint that returns the cheapest product
-@app.get("/api/product/cheapest")
-def get_cheapest():
-   answer = catalog[0]
-   for prod in catalog:
-      if prod["Price"] < answer["Price"]:
-         answer = prod
-
-   return json.dumps(answer)
-
 
 
 
@@ -98,14 +89,29 @@ def get_cheapest():
 #End point whose price is lower than a specific $
 @app.get('/api/product/cheaper/<price>')
 def search_by_price(price):
-   result = []
-   for prod in catalog:
+     cursor = db.products.find({})
+     results = []
+     for prod in cursor:
       if prod["Price"] < float(price):
-         result.append(prod)
+            prod["_id"] = str(prod["_id"])
+            results.append(prod)
 
-   return json.dumps(result)
+      return json.dumps(results)
 
 
+
+
+# create a get endpoint that returns the cheapest product
+@app.get("/api/product/cheapest")
+def get_cheapest():
+   cursor = db.products.find({})
+   answer = cursor[0]
+   for prod in cursor:
+      if prod["Price"] < answer["Price"]:
+         answer = prod
+
+   answer["_id"] = str(answer["_id"])
+   return json.dumps(answer)
 
 
 #create a list of numbers 1 to 20 except 13 & 17 and return the list as json
